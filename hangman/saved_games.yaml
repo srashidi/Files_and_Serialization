@@ -1,0 +1,59 @@
+--- !ruby/object:SaveGame
+chosen_word: exurbanite
+word_guess: !ruby/object:WordGuess
+  correct_word_array:
+  - E
+  - X
+  - U
+  - R
+  - B
+  - A
+  - N
+  - I
+  - T
+  - E
+  letters_guessed_array:
+  - E
+  - __
+  - __
+  - __
+  - __
+  - A
+  - __
+  - __
+  - __
+  - E
+dead_man: !ruby/object:DeadMan
+  wrong_letters: []
+  wrong_guesses: 0
+time: 2015-11-04 11:10:47.929072000 -08:00
+--- !ruby/object:SaveGame
+chosen_word: exurbanite
+word_guess: !ruby/object:WordGuess
+  correct_word_array:
+  - E
+  - X
+  - U
+  - R
+  - B
+  - A
+  - N
+  - I
+  - T
+  - E
+  letters_guessed_array:
+  - E
+  - __
+  - U
+  - __
+  - __
+  - A
+  - __
+  - I
+  - __
+  - E
+dead_man: !ruby/object:DeadMan
+  wrong_letters:
+  - O
+  wrong_guesses: 1
+time: 2015-11-04 11:30:28.519053000 -08:00

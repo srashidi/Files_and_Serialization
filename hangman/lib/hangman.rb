@@ -1,18 +1,24 @@
+require 'yaml'
+
 # Class for hangman being gradually created
 class DeadMan
 
   attr_accessor :wrong_letters, :wrong_guesses
 
+  # Starts a fresh hangman person
   def initialize
     @wrong_letters = []
     @wrong_guesses = 0
   end
 
+  # Displays letters that have been guessed incorrectly
   def show_wrong_letters
     puts "These letters are not in the word: #{@wrong_letters.join(", ")}"
     puts "\n"
   end
 
+  # Displays a description of the hangman based on how many wrong guesses
+  # have been made
   def description
     case @wrong_guesses
     when 1
@@ -44,11 +50,13 @@ class WordGuess
 
   attr_accessor :letters_guessed_array
 
+  # Initialize the correct letters and guessed letters arrays
   def initialize(word)
     @correct_word_array = word.upcase.split(//)
     @letters_guessed_array = Array.new(word.length,"__")
   end
 
+  # Display the current status of guesses
   def display(dead_man)
     puts @letters_guessed_array.join(" ")
     puts "\n"
@@ -56,6 +64,7 @@ class WordGuess
     dead_man.description unless dead_man.wrong_guesses == 0
   end
 
+  # Determines if a letter or word is being guessed
   def guess(input,dead_man)
     input.upcase!
     if input.length == 1
@@ -65,6 +74,7 @@ class WordGuess
     end
   end
 
+  # Determines if a letter guessed is correct or incorrect
   def letter_guess(input,dead_man)
     if @letters_guessed_array.include?(input) || dead_man.wrong_letters.include?(input)
       puts "You have already guessed this letter!"
@@ -74,8 +84,11 @@ class WordGuess
         @letters_guessed_array[index] = input if @correct_word_array[index] == input
       end
       puts "The letter #{input} is in the word."
-      display(dead_man)
-      win unless @letters_guessed_array.include?("__")
+      if @letters_guessed_array.include?("__")
+        display(dead_man)
+      else
+        win
+      end
     else
       puts "The letter #{input} is not in the word."
       dead_man.wrong_letters.push(input)
@@ -84,13 +97,10 @@ class WordGuess
     end
   end
 
+  # Determines if a word guessed is correct or incorrect
   def whole_word_guess(input,dead_man)
     guessed_word_array = input.split(//)
     if guessed_word_array == @correct_word_array
-      puts "\n"
-      @letters_guessed_array = @correct_word_array
-      puts @letters_guessed_array.join(" ")
-      puts "\n"
       win
     else
       puts "The word you have guessed is incorrect!"
@@ -99,43 +109,31 @@ class WordGuess
     end
   end
 
+  # Gives a message if the player wins
   def win
+    puts "\n"
+    @letters_guessed_array = @correct_word_array
+    puts @letters_guessed_array.join(" ")
+    puts "\n"
     puts "You have guess the whole word correctly! You have saved"
     puts "this man from a hanging!"
   end
 
 end
 
-class SaveGame
-  def initialize(chosen_word,word_guess,dead_man)
-  end
-end
-
+# Class for playing a game of Hangman
 class Hangman
 
-  def initialize
-    puts "\nChoose from one of the following options:"
-    puts "1: Start a new game"
-    puts "2: Load a previously saved game"
-    puts "3: Quit"
-    choice = gets.chomp.strip
-    case choice
-    when "1"
-      puts "\n"
+  # Initialize a new game of Hangman with an option menu
+  def initialize(game_type,*p)
+    if game_type == :new_game
       new_game
-    when "2"
-      puts "\n"
-      load_game
-    when "3"
-      puts "\n"
-      puts "Goodbye!"
-    else
-      puts "\n"
-      puts "Invalid input. Try again..."
-      initialize
-    end
+    elsif game_type == :load_game
+      load_game(p[0],p[1],p[2])
+    end 
   end
 
+  # Starting a new round of Hangman
   def new_game
     dictionary = File.readlines("assets/5desk.txt").map {|word| word.chomp}
     dictionary.select! {|word| word.length >= 5 && word.length <= 12}
@@ -155,33 +153,128 @@ class Hangman
     round
   end
 
-  def load_game
-    
+  # Loading a previous game of Hangman
+  def load_game(chosen_word,word_guess,dead_man)
+    @chosen_word = chosen_word
+    @word_guess = word_guess
+    @dead_man = dead_man
+
+    @word_guess.display(@dead_man)
+    round
   end
 
+  # Each turn in a game of Hangman
   def round
     puts "Guess a letter, guess the whole word, \"save game\" and exit,"
     puts "or \"exit game\" without saving."
     input = gets.chomp.strip
     case input
     when "exit game"
-      initialize
+      GameMenu.new
     when "save game"
-      saved_game = SaveGame.new(@chosen_word,@word_guess,@dead_man)
+      saved_game = SaveGame.new(@chosen_word,@word_guess,@dead_man,Time.now)
+      saved_game.dump
+      GameMenu.new
+    when ""
+      puts "\n"
+      round
     else
       @word_guess.guess(input,@dead_man)
       if @word_guess.letters_guessed_array.include?("__")
         if @dead_man.wrong_guesses == 8
-          initialize
+          GameMenu.new
         else
           round
         end
       else
-        initialize
+        GameMenu.new
       end
     end
   end
 
 end
 
-start_game = Hangman.new
+# Houses a saved game
+class SaveGame
+
+  attr_reader :chosen_word, :word_guess, :dead_man, :time
+
+  def initialize(chosen_word,word_guess,dead_man,time)
+    @chosen_word = chosen_word
+    @word_guess = word_guess
+    @dead_man = dead_man
+    @time = time
+  end
+
+  def dump
+    File.open("saved_games.yaml", "a") do |out|
+      data = YAML::dump(self, out)
+    end
+  end
+
+  def self.load
+    i = 1
+    if File.read("saved_games.yaml").empty?
+      puts "There are no saved games, yet."
+      GameMenu.new
+    else
+      YAML.load_stream(File.open("saved_games.yaml")) do |saved_game|
+        puts "#{i}: " + saved_game.time.strftime("%m/%d/%Y %I:%M%P")
+        i += 1
+      end
+      puts "\n"
+      puts "Choose a game to load or \"exit\" to menu:"
+      game_index = gets.chomp.strip.downcase
+      if game_index == "exit"
+        GameMenu.new
+      elsif game_index.to_i <= i && game_index.to_i >= 1
+        game_index = game_index.to_i
+        i = 1
+        puts "\n"
+        YAML.load_stream(File.open("saved_games.yaml")) do |game|
+          if i == game_index
+            Hangman.new(:load_game,game.chosen_word,game.word_guess,game.dead_man)
+            #game = ""
+          end
+          i += 1
+        end
+      else
+        puts "Invalid input. Try again..."
+        puts "\n"
+        SaveGame.load
+      end
+    end
+  end
+
+end
+
+# Opens a new game menu
+class GameMenu
+
+  def initialize
+    puts "\nChoose from one of the following options:"
+    puts "1: Start a new game"
+    puts "2: Load a previously saved game"
+    puts "3: Quit"
+    choice = gets.chomp.strip
+    case choice
+    when "1"
+      puts "\n"
+      Hangman.new(:new_game)
+    when "2"
+      puts "\n"
+      SaveGame.load
+    when "3"
+      puts "\n"
+      puts "Goodbye!"
+    else
+      puts "\n"
+      puts "Invalid input. Try again..."
+      initialize
+    end
+  end
+
+end
+
+# Opens the options menu for Hangman
+start_game = GameMenu.new
