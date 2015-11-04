@@ -165,13 +165,13 @@ class Hangman
 
   # Each turn in a game of Hangman
   def round
-    puts "Guess a letter, guess the whole word, \"save game\" and exit,"
-    puts "or \"exit game\" without saving."
+    puts "Guess a letter, guess the whole word, \"save\" game and exit,"
+    puts "or \"exit\" game without saving."
     input = gets.chomp.strip
     case input
-    when "exit game"
+    when "exit"
       GameMenu.new
-    when "save game"
+    when "save"
       saved_game = SaveGame.new(@chosen_word,@word_guess,@dead_man,Time.now)
       saved_game.dump
       GameMenu.new
@@ -199,6 +199,7 @@ class SaveGame
 
   attr_reader :chosen_word, :word_guess, :dead_man, :time
 
+  # Initializes a saved game using given information
   def initialize(chosen_word,word_guess,dead_man,time)
     @chosen_word = chosen_word
     @word_guess = word_guess
@@ -206,14 +207,17 @@ class SaveGame
     @time = time
   end
 
+  # Saves the game as yaml to saved_game
   def dump
     File.open("saved_games.yaml", "a") do |out|
-      data = YAML::dump(self, out)
+      YAML::dump(self, out)
     end
   end
 
+  # Initiates a menu to access and select saved games
   def self.load
     i = 1
+    File.new("saved_games.yaml","w") unless File.exist?("saved_games.yaml")
     if File.read("saved_games.yaml").empty?
       puts "There are no saved games, yet."
       GameMenu.new
@@ -230,14 +234,23 @@ class SaveGame
       elsif game_index.to_i <= i && game_index.to_i >= 1
         game_index = game_index.to_i
         i = 1
+        File.new("temp.yaml","w")
         puts "\n"
         YAML.load_stream(File.open("saved_games.yaml")) do |game|
           if i == game_index
-            Hangman.new(:load_game,game.chosen_word,game.word_guess,game.dead_man)
-            #game = ""
+            @chosen_word = game.chosen_word
+            @word_guess = game.word_guess
+            @dead_man = game.dead_man
+          else
+            File.open("temp.yaml","a") do |out|
+              YAML::dump(game,out)
+            end
           end
           i += 1
         end
+        File.delete("saved_games.yaml")
+        File.rename("temp.yaml","saved_games.yaml")
+        Hangman.new(:load_game,@chosen_word,@word_guess,@dead_man)
       else
         puts "Invalid input. Try again..."
         puts "\n"
@@ -251,6 +264,7 @@ end
 # Opens a new game menu
 class GameMenu
 
+  # Gives choices to the player for how to start/continue a game
   def initialize
     puts "\nChoose from one of the following options:"
     puts "1: Start a new game"
